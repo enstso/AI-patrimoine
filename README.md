@@ -1,572 +1,572 @@
-# AI-patrimoine
-# Architecture cible de la plateforme agentique
+# AI Patrimoine
 
-## 1. Retour d’expérience sur la première version
+# Target Architecture for the Agentic Platform
 
-Une première version du projet avait été réalisée principalement avec n8n.
+## 1. Feedback from the First Version
 
-Cette approche a permis de construire rapidement un prototype, mais plusieurs limites sont apparues lorsque le workflow est devenu plus complexe :
+A first version of the project was built mainly with **n8n**.
 
-* faible visibilité sur le comportement des agents ;
-* absence de traçabilité détaillée des décisions ;
-* difficulté à comprendre les erreurs ;
-* consommation excessive de tokens ;
-* appels répétés aux modèles d’intelligence artificielle ;
-* workflows complexes et difficiles à maintenir ;
-* faible maîtrise de l’état global d’un dossier ;
-* difficulté à mesurer les performances ;
-* sécurité et gestion des accès insuffisamment centralisées ;
-* coût d’exploitation difficile à contrôler.
+This approach made it possible to quickly build a prototype, but several limitations appeared as the workflow became more complex:
 
-n8n était utilisé à la fois pour les intégrations, la logique métier et l’orchestration des agents. Ce regroupement a rapidement rendu la solution difficile à optimiser et à faire évoluer.
+* poor visibility into agent behavior;
+* lack of detailed decision traceability;
+* difficulty understanding errors;
+* excessive token consumption;
+* repeated calls to AI models;
+* complex workflows that were difficult to maintain;
+* limited control over the overall state of a case;
+* difficulty measuring performance;
+* insufficiently centralized security and access management;
+* operating costs that were difficult to control.
 
-La nouvelle architecture doit donc clairement séparer les responsabilités.
+n8n was used simultaneously for integrations, business logic, and agent orchestration. This combination quickly made the solution difficult to optimize and evolve.
 
-# 2. Principe général de la nouvelle architecture
+The new architecture must therefore clearly separate responsibilities.
 
-La plateforme repose sur trois niveaux principaux :
+# 2. General Principle of the New Architecture
 
-* n8n pour les intégrations et les automatisations simples ;
-* LangChain pour construire les agents ayant accès au système d’information ;
-* LangGraph pour orchestrer l’ensemble du processus agentique.
+The platform is based on three main layers:
 
-À ces trois composants s’ajoutent :
+* **n8n** for integrations and simple automations;
+* **LangChain** for building agents that access the information system;
+* **LangGraph** for orchestrating the entire agentic process.
 
-* une couche d’observabilité ;
-* une couche de sécurité ;
-* une base de données métier ;
-* un système de gestion des droits ;
-* une interface de validation humaine.
+These three components are complemented by:
 
-La logique générale peut être résumée ainsi :
+* an observability layer;
+* a security layer;
+* a business database;
+* an access-rights management system;
+* a human-validation interface.
+
+The overall logic can be summarized as follows:
 
 ```text
-Applications de l’entreprise
-Teams, GED, calendrier, patrimoine, finance, comptabilité
+Enterprise Applications
+Teams, DMS, calendar, assets, finance, accounting
                          │
                          ▼
-              Couche de sécurité
-        Authentification, droits, middleware
+                  Security Layer
+          Authentication, permissions, middleware
                          │
                          ▼
                      LangGraph
-          Orchestration et état du dossier
+              Orchestration and case state
                          │
-             ┌───────────┴───────────┐
-             ▼                       ▼
-       Agents simples          Agents métier
-           n8n                 LangChain
-             │                       │
-             └───────────┬───────────┘
+              ┌──────────┴──────────┐
+              ▼                     ▼
+         Simple Agents         Business Agents
+             n8n                LangChain
+              │                     │
+              └──────────┬──────────┘
                          ▼
-             Systèmes de l’entreprise
+              Enterprise Systems
                          │
                          ▼
-                 Observabilité
-       Traces, coûts, erreurs, statistiques
+                   Observability
+          Traces, costs, errors, statistics
 ```
 
-# 3. Rôle de n8n
+# 3. Role of n8n
 
-n8n est conservé dans l’architecture, mais son rôle est limité aux tâches d’intégration simples et clairement délimitées.
+n8n remains part of the architecture, but its role is limited to simple and clearly defined integration tasks.
 
-Un agent ou un workflow peut être développé avec n8n lorsque sa responsabilité est réduite, peu risquée et principalement déterministe.
+An agent or workflow can be developed with n8n when its responsibility is limited, low-risk, and mainly deterministic.
 
-Exemples :
+Examples:
 
-* récupérer une transcription Teams ;
-* déplacer un document vers un espace de stockage ;
-* envoyer une notification ;
-* transmettre une demande de validation ;
-* générer un fichier à partir d’un modèle ;
-* créer un événement dans un calendrier ;
-* envoyer un courriel ;
-* déclencher un webhook ;
-* appeler une API externe ;
-* mettre à jour un statut dans une base de données.
+* retrieve a Teams transcript;
+* move a document to a storage space;
+* send a notification;
+* forward an approval request;
+* generate a file from a template;
+* create a calendar event;
+* send an email;
+* trigger a webhook;
+* call an external API;
+* update a status in a database.
 
-n8n agit donc comme une couche d’automatisation et de connexion entre les différents services.
+n8n therefore acts as an **automation and integration layer** between the different services.
 
-Il ne doit pas porter seul :
+It should not be solely responsible for:
 
-* la mémoire complète d’un dossier ;
-* les décisions complexes ;
-* les règles d’accès au patrimoine ;
-* les raisonnements longs ;
-* les boucles de contrôle ;
-* les stratégies multi-agents ;
-* la gestion des erreurs métier complexes.
+* the complete memory of a case;
+* complex decisions;
+* access rules for asset-related data;
+* long reasoning processes;
+* control loops;
+* multi-agent strategies;
+* complex business error management.
 
-# 4. Rôle de LangChain
+# 4. Role of LangChain
 
-LangChain est utilisé pour construire les agents métier ayant besoin d’interagir avec les données et les outils de l’entreprise.
+LangChain is used to build business agents that need to interact with company data and tools.
 
-Il peut notamment être utilisé lorsqu’un agent doit :
+It can notably be used when an agent needs to:
 
-* interroger le système de gestion du patrimoine ;
-* rechercher des informations dans la GED ;
-* analyser plusieurs documents ;
-* consulter des données financières ;
-* comparer une transcription avec un historique de décisions ;
-* appeler plusieurs outils successivement ;
-* produire une réponse structurée ;
-* sélectionner l’outil adapté à une situation ;
-* exploiter une base vectorielle ;
-* appliquer des règles métier spécifiques.
+* query the asset-management system;
+* search for information in the DMS;
+* analyze multiple documents;
+* access financial data;
+* compare a transcript with a history of decisions;
+* call several tools successively;
+* produce a structured response;
+* select the appropriate tool for a situation;
+* use a vector database;
+* apply specific business rules.
 
-Exemples d’agents LangChain :
+Examples of LangChain agents:
 
-* agent d’analyse des transcriptions ;
-* agent de classification rénovation ou acquisition ;
-* agent d’analyse du patrimoine ;
-* agent spécialisé en rénovation ;
-* agent spécialisé en acquisition ;
-* agent d’analyse documentaire ;
-* agent de contrôle des décisions ;
-* agent de préparation des comptes rendus ;
-* agent de recherche des personnes habilitées.
+* transcript analysis agent;
+* renovation/acquisition classification agent;
+* asset-analysis agent;
+* renovation specialist agent;
+* acquisition specialist agent;
+* document-analysis agent;
+* decision-control agent;
+* meeting-minutes preparation agent;
+* authorized-person search agent.
 
-Les agents LangChain doivent être construits comme des services indépendants, avec des outils strictement définis.
+LangChain agents must be built as **independent services with strictly defined tools**.
 
-Chaque agent ne doit avoir accès qu’aux fonctions nécessaires à sa mission.
+Each agent should only have access to the functions required for its mission.
 
-Par exemple, l’agent d’analyse documentaire peut consulter des documents, mais ne doit pas pouvoir modifier un patrimoine ou créer un engagement financier.
+For example, the document-analysis agent may read documents, but it should not be able to modify asset data or create a financial commitment.
 
-# 5. Rôle de LangGraph
+# 5. Role of LangGraph
 
-LangGraph constitue le cerveau et l’orchestrateur principal de la plateforme.
+LangGraph is the **brain and main orchestrator** of the platform.
 
-Il contrôle :
+It controls:
 
-* les étapes du processus ;
-* l’enchaînement des agents ;
-* les conditions de passage d’une étape à une autre ;
-* la mémoire du dossier ;
-* les validations humaines ;
-* les erreurs ;
-* les reprises après interruption ;
-* les branches rénovation et acquisition ;
-* les interactions avec n8n ;
-* les interactions avec les agents LangChain.
+* process steps;
+* agent sequencing;
+* conditions for moving from one step to another;
+* case memory;
+* human approvals;
+* errors;
+* recovery after interruptions;
+* renovation and acquisition branches;
+* interactions with n8n;
+* interactions with LangChain agents.
 
-LangGraph doit maintenir un état central pour chaque dossier.
+LangGraph must maintain a centralized state for each case.
 
-Exemple :
+Example:
 
 ```text
-Dossier
-├── Identifiant
-├── Type d’opération
-├── Patrimoine concerné
-├── Transcriptions
+Case
+├── Identifier
+├── Operation type
+├── Related assets
+├── Transcripts
 ├── Documents
-├── Décisions détectées
-├── Décisions validées
-├── Actions à réaliser
-├── Responsables
-├── Participants nécessaires
-├── Validations attendues
-├── Réunions organisées
-├── Niveau de confiance
-├── Étape actuelle
-└── Historique des événements
+├── Detected decisions
+├── Validated decisions
+├── Actions to be performed
+├── Owners
+├── Required participants
+├── Pending approvals
+├── Scheduled meetings
+├── Confidence level
+├── Current step
+└── Event history
 ```
 
-LangGraph décide ensuite quel composant doit intervenir.
+LangGraph then decides which component should intervene.
 
-Exemple :
+Example:
 
 ```text
-Réception de la transcription
+Receipt of transcript
              │
              ▼
-Analyse de la transcription
+Transcript analysis
              │
              ▼
-Une décision a-t-elle été prise ?
+Has a decision been made?
         ┌────┴────┐
         │         │
-       Non       Oui
+       No        Yes
         │         │
         ▼         ▼
-Validation     Classification
-humaine       du dossier
-                  │
-          ┌───────┴────────┐
-          ▼                ▼
-     Rénovation        Acquisition
-          │                │
-          ▼                ▼
- Agent rénovation    Agent acquisition
-          │                │
-          └───────┬────────┘
-                  ▼
-       Vérification des résultats
-                  │
-                  ▼
-       Génération du compte rendu
-                  │
-                  ▼
-      Recherche des disponibilités
-                  │
-                  ▼
-        Validation de l’utilisateur
-                  │
-                  ▼
-      Création de la prochaine réunion
+     Human    Case classification
+   validation        │
+                ┌────┴─────┐
+                ▼          ▼
+          Renovation   Acquisition
+                │          │
+                ▼          ▼
+      Renovation agent  Acquisition agent
+                │          │
+                └────┬─────┘
+                     ▼
+              Result verification
+                     │
+                     ▼
+          Meeting-minutes generation
+                     │
+                     ▼
+             Availability search
+                     │
+                     ▼
+               User validation
+                     │
+                     ▼
+            Next meeting creation
 ```
 
-# 6. Règle de choix entre n8n et LangChain
+# 6. Rule for Choosing Between n8n and LangChain
 
-Le choix de la technologie dépend de la responsabilité de l’agent.
+The technology choice depends on the responsibility of the agent.
 
-## Utiliser n8n lorsque :
+## Use n8n when:
 
-* la tâche est simple ;
-* le workflow est déterministe ;
-* le nombre d’étapes est limité ;
-* l’agent ne manipule pas de données critiques ;
-* aucune mémoire complexe n’est nécessaire ;
-* les actions sont facilement vérifiables ;
-* l’objectif principal est de connecter des applications.
+* the task is simple;
+* the workflow is deterministic;
+* the number of steps is limited;
+* the agent does not handle critical data;
+* no complex memory is required;
+* actions are easy to verify;
+* the main objective is to connect applications.
 
-## Utiliser LangChain lorsque :
+## Use LangChain when:
 
-* l’agent doit raisonner sur plusieurs sources ;
-* l’agent doit sélectionner dynamiquement des outils ;
-* l’agent interagit avec le patrimoine de l’entreprise ;
-* l’agent manipule des informations sensibles ;
-* l’agent doit analyser plusieurs documents ;
-* l’agent doit respecter des règles métier complexes ;
-* une sortie structurée et contrôlée est nécessaire ;
-* les permissions doivent être gérées avec précision.
+* the agent must reason across multiple sources;
+* the agent must dynamically select tools;
+* the agent interacts with the company's asset-management system;
+* the agent handles sensitive information;
+* the agent must analyze multiple documents;
+* the agent must comply with complex business rules;
+* structured and controlled output is required;
+* permissions must be managed precisely.
 
-## Utiliser LangGraph lorsque :
+## Use LangGraph when:
 
-* plusieurs agents doivent collaborer ;
-* le processus contient plusieurs branches ;
-* le dossier évolue sur plusieurs réunions ;
-* l’exécution peut être interrompue puis reprise ;
-* une validation humaine est requise ;
-* un état persistant doit être conservé ;
-* la décision dépend du résultat d’étapes précédentes ;
-* le système doit gérer des erreurs et des reprises.
+* several agents must collaborate;
+* the process contains multiple branches;
+* the case evolves across several meetings;
+* execution can be interrupted and resumed;
+* human validation is required;
+* persistent state must be maintained;
+* decisions depend on the results of previous steps;
+* the system must handle errors and recovery.
 
-# 7. Couche d’observabilité
+# 7. Observability Layer
 
-L’observabilité est un composant central de la nouvelle architecture.
+Observability is a central component of the new architecture.
 
-Elle doit permettre de tracer chaque étape exécutée par le système.
+It must make it possible to trace every step executed by the system.
 
-Pour chaque traitement, la plateforme doit pouvoir enregistrer :
+For each operation, the platform should be able to record:
 
-* l’identifiant du dossier ;
-* l’agent appelé ;
-* le modèle utilisé ;
-* le prompt utilisé ou sa version ;
-* les outils appelés ;
-* les documents consultés ;
-* la durée du traitement ;
-* le nombre de tokens consommés ;
-* le coût estimé ;
-* le résultat produit ;
-* le niveau de confiance ;
-* les erreurs rencontrées ;
-* les tentatives de relance ;
-* les validations humaines ;
-* la personne ayant validé ;
-* la date et l’heure de chaque action.
+* case identifier;
+* agent called;
+* model used;
+* prompt used or prompt version;
+* tools called;
+* documents consulted;
+* processing duration;
+* number of tokens consumed;
+* estimated cost;
+* result produced;
+* confidence level;
+* errors encountered;
+* retry attempts;
+* human approvals;
+* person who approved the action;
+* date and time of each action.
 
-## Exemple de trace
+## Example Trace
 
 ```json
 {
   "trace_id": "TRACE-2026-00482",
-  "dossier_id": "PAT-2026-0017",
-  "workflow": "analyse_reunion",
-  "agent": "agent_classification",
-  "modele": "modele-llm",
-  "date_debut": "2026-07-23T10:02:15",
-  "duree_ms": 2350,
-  "tokens_entree": 4120,
-  "tokens_sortie": 620,
-  "cout_estime": 0.034,
-  "resultat": "RENOVATION",
-  "confiance": 0.93,
-  "statut": "SUCCES"
+  "case_id": "PAT-2026-0017",
+  "workflow": "meeting_analysis",
+  "agent": "classification_agent",
+  "model": "llm_model",
+  "start_date": "2026-07-23T10:02:15",
+  "duration_ms": 2350,
+  "input_tokens": 4120,
+  "output_tokens": 620,
+  "estimated_cost": 0.034,
+  "result": "RENOVATION",
+  "confidence": 0.93,
+  "status": "SUCCESS"
 }
 ```
 
-# 8. Statistiques et pilotage
+# 8. Statistics and Monitoring
 
-Les traces collectées permettront de construire des tableaux de bord.
+The collected traces will make it possible to build dashboards.
 
-La plateforme pourra notamment mesurer :
+The platform will notably be able to measure:
 
-## Performances techniques
+## Technical Performance
 
-* durée moyenne d’une analyse ;
-* taux d’erreur par agent ;
-* nombre de relances ;
-* disponibilité des services ;
-* temps de réponse des outils ;
-* taux d’échec des workflows.
+* average analysis duration;
+* error rate per agent;
+* number of retries;
+* service availability;
+* tool response time;
+* workflow failure rate.
 
-## Performances économiques
+## Economic Performance
 
-* coût moyen par dossier ;
-* coût moyen par réunion ;
-* consommation de tokens par agent ;
-* coût par type de document ;
-* coût par modèle ;
-* coût des traitements échoués ;
-* économies réalisées grâce au cache.
+* average cost per case;
+* average cost per meeting;
+* token consumption per agent;
+* cost per document type;
+* cost per model;
+* cost of failed processing;
+* savings achieved through caching.
 
-## Performances métier
+## Business Performance
 
-* nombre de décisions extraites ;
-* nombre de décisions validées ;
-* nombre de corrections humaines ;
-* taux de décisions ambiguës ;
-* délai moyen entre deux réunions ;
-* délai moyen de validation ;
-* nombre de dossiers rénovation ;
-* nombre de dossiers acquisition ;
-* nombre d’actions réalisées dans les délais.
+* number of decisions extracted;
+* number of decisions validated;
+* number of human corrections;
+* rate of ambiguous decisions;
+* average time between two meetings;
+* average validation time;
+* number of renovation cases;
+* number of acquisition cases;
+* number of actions completed on time.
 
-## Qualité des agents
+## Agent Quality
 
-* niveau de confiance moyen ;
-* taux de classification correcte ;
-* taux de faux positifs ;
-* taux de faux négatifs ;
-* nombre de comptes rendus corrigés ;
-* fréquence des erreurs par type de document ;
-* outils les plus utilisés ;
-* étapes nécessitant le plus souvent une intervention humaine.
+* average confidence level;
+* correct classification rate;
+* false-positive rate;
+* false-negative rate;
+* number of corrected meeting minutes;
+* error frequency by document type;
+* most frequently used tools;
+* steps most frequently requiring human intervention.
 
-Ces données permettront ensuite de mettre en place des stratégies d’optimisation.
+This data can then be used to implement optimization strategies.
 
-# 9. Stratégies d’optimisation futures
+# 9. Future Optimization Strategies
 
-Grâce à l’observabilité, plusieurs optimisations pourront être appliquées.
+Thanks to observability, several optimizations can be implemented.
 
-## Optimisation des coûts
+## Cost Optimization
 
-* utiliser un petit modèle pour les tâches simples ;
-* réserver les modèles avancés aux décisions complexes ;
-* éviter de renvoyer l’intégralité des transcriptions ;
-* résumer les anciennes réunions ;
-* utiliser un cache pour les résultats déjà calculés ;
-* limiter le nombre d’appels successifs ;
-* regrouper certaines analyses ;
-* arrêter un workflow lorsqu’une information essentielle manque.
+* use a smaller model for simple tasks;
+* reserve advanced models for complex decisions;
+* avoid resending entire transcripts;
+* summarize older meetings;
+* use caching for previously calculated results;
+* limit the number of successive calls;
+* combine certain analyses;
+* stop a workflow when essential information is missing.
 
-## Optimisation des performances
+## Performance Optimization
 
-* paralléliser les analyses indépendantes ;
-* précharger les documents nécessaires ;
-* indexer les documents dans une base vectorielle ;
-* utiliser des sorties JSON structurées ;
-* réduire la taille des prompts ;
-* sélectionner uniquement les passages pertinents ;
-* utiliser des règles programmées avant d’appeler un modèle.
+* parallelize independent analyses;
+* preload required documents;
+* index documents in a vector database;
+* use structured JSON outputs;
+* reduce prompt size;
+* select only relevant passages;
+* apply programmatic rules before calling a model.
 
-## Optimisation de la qualité
+## Quality Optimization
 
-* comparer les résultats de plusieurs agents ;
-* mettre en place un agent de vérification ;
-* vérifier chaque décision avec un extrait de la transcription ;
-* mesurer les corrections humaines ;
-* améliorer les prompts à partir des erreurs observées ;
-* créer des jeux de tests métier ;
-* versionner les agents et les prompts.
+* compare results from multiple agents;
+* implement a verification agent;
+* validate each decision against an excerpt from the transcript;
+* measure human corrections;
+* improve prompts based on observed errors;
+* create business test datasets;
+* version agents and prompts.
 
-# 10. Gestion renforcée des accès
+# 10. Enhanced Access Management
 
-L’accès aux outils et aux données doit être contrôlé par une couche de middleware.
+Access to tools and data must be controlled through a middleware layer.
 
-Le middleware intervient avant chaque appel à un outil ou à un service.
+The middleware intervenes before every call to a tool or service.
 
-Il vérifie notamment :
+It checks in particular:
 
-* l’identité de l’utilisateur ;
-* l’identité de l’agent ;
-* le rôle de l’utilisateur ;
-* les permissions de l’agent ;
-* le type de dossier ;
-* le périmètre du patrimoine concerné ;
-* le niveau de sensibilité des données ;
-* l’action demandée ;
-* la nécessité d’une validation humaine.
+* user identity;
+* agent identity;
+* user role;
+* agent permissions;
+* case type;
+* scope of the relevant assets;
+* data sensitivity level;
+* requested action;
+* whether human approval is required.
 
-## Exemple de contrôle
+## Example Control
 
 ```text
-Agent acquisition
+Acquisition agent
         │
         ▼
-Demande d’accès aux données financières
+Request access to financial data
         │
         ▼
-Middleware de sécurité
+Security middleware
         │
-        ├── L’agent est-il autorisé ?
-        ├── L’utilisateur est-il habilité ?
-        ├── Le dossier est-il dans son périmètre ?
-        ├── Les données sont-elles nécessaires ?
-        └── Une validation est-elle requise ?
+        ├── Is the agent authorized?
+        ├── Is the user authorized?
+        ├── Is the case within their scope?
+        ├── Is the data necessary?
+        └── Is validation required?
                 │
-          ┌─────┴─────┐
-          ▼           ▼
-       Autorisé     Refusé
-          │           │
-          ▼           ▼
-      Appel outil   Journalisation
+           ┌────┴────┐
+           ▼         ▼
+       Authorized   Denied
+           │         │
+           ▼         ▼
+       Tool call    Logging
 ```
 
-# 11. Principe du moindre privilège
+# 11. Principle of Least Privilege
 
-Chaque agent possède uniquement les permissions nécessaires à son rôle.
+Each agent is granted only the permissions required for its role.
 
-Exemples :
+Examples:
 
-| Agent                  | Permissions                                                      |
-| ---------------------- | ---------------------------------------------------------------- |
-| Agent de transcription | Lire et structurer une transcription                             |
-| Agent documentaire     | Consulter les documents du dossier                               |
-| Agent rénovation       | Consulter les données techniques du patrimoine                   |
-| Agent acquisition      | Consulter les données d’acquisition autorisées                   |
-| Agent calendrier       | Lire les disponibilités et proposer des créneaux                 |
-| Agent de compte rendu  | Générer un document, sans pouvoir le publier seul                |
-| Agent financier        | Consulter certaines données financières, sans engager de dépense |
+| Agent                 | Permissions                                                            |
+| --------------------- | ---------------------------------------------------------------------- |
+| Transcript Agent      | Read and structure a transcript                                        |
+| Document Agent        | Access documents associated with the case                              |
+| Renovation Agent      | Access technical asset data                                            |
+| Acquisition Agent     | Access authorized acquisition data                                     |
+| Calendar Agent        | Read availability and suggest time slots                               |
+| Meeting-Minutes Agent | Generate a document without being able to publish it autonomously      |
+| Financial Agent       | Access certain financial data without being able to commit expenditure |
 
-Un agent ne doit jamais recevoir un accès général à l’ensemble du système d’information.
+An agent should never be given unrestricted access to the entire information system.
 
-# 12. Middleware complémentaires
+# 12. Additional Middleware
 
-Plusieurs middleware peuvent être placés autour des agents.
+Several middleware components can be placed around the agents.
 
-## Middleware d’authentification
+## Authentication Middleware
 
-Il vérifie l’identité de l’utilisateur et de l’application.
+It verifies the identity of the user and the application.
 
-## Middleware d’autorisation
+## Authorization Middleware
 
-Il contrôle les rôles et les permissions.
+It controls roles and permissions.
 
-## Middleware de filtrage des données
+## Data-Filtering Middleware
 
-Il masque ou supprime les données que l’agent n’est pas autorisé à consulter.
+It masks or removes data that the agent is not authorized to access.
 
-## Middleware de validation humaine
+## Human-Validation Middleware
 
-Il bloque les opérations sensibles jusqu’à l’accord d’une personne habilitée.
+It blocks sensitive operations until approval is received from an authorized person.
 
-## Middleware de limitation
+## Limiting Middleware
 
-Il limite :
+It limits:
 
-* le nombre d’appels ;
-* la consommation de tokens ;
-* le coût maximal par dossier ;
-* le temps maximal d’exécution ;
-* le nombre de tentatives.
+* number of calls;
+* token consumption;
+* maximum cost per case;
+* maximum execution time;
+* number of attempts.
 
-## Middleware d’audit
+## Audit Middleware
 
-Il enregistre toutes les actions sensibles.
+It records all sensitive actions.
 
-## Middleware de protection des outils
+## Tool-Protection Middleware
 
-Il vérifie les paramètres avant d’autoriser un agent à utiliser un outil.
+It validates parameters before allowing an agent to use a tool.
 
-# 13. Actions nécessitant une validation humaine
+# 13. Actions Requiring Human Validation
 
-Les actions suivantes ne doivent pas être exécutées automatiquement :
+The following actions should not be executed automatically:
 
-* validation définitive d’une acquisition ;
-* validation d’un budget ;
-* engagement d’une dépense ;
-* lancement officiel de travaux ;
-* modification d’une donnée patrimoniale critique ;
-* envoi d’un compte rendu officiel ;
-* invitation de personnes externes ;
-* transmission d’un document confidentiel ;
-* clôture d’un dossier ;
-* suppression d’une information.
+* final approval of an acquisition;
+* budget approval;
+* financial commitment;
+* official launch of renovation work;
+* modification of critical asset data;
+* sending official meeting minutes;
+* inviting external participants;
+* transmitting a confidential document;
+* closing a case;
+* deleting information.
 
-L’agent peut préparer l’action, mais la décision finale reste humaine.
+The agent may prepare the action, but the **final decision remains with a human**.
 
-# 14. Architecture technique synthétique
+# 14. High-Level Technical Architecture
 
 ```text
 ┌──────────────────────────────────────────────┐
-│                Interfaces                    │
-│ Application métier, portail, Teams, e-mails │
+│                 Interfaces                   │
+│ Business app, portal, Teams, emails          │
 └──────────────────────┬───────────────────────┘
                        │
                        ▼
 ┌──────────────────────────────────────────────┐
-│         API Gateway et middleware            │
-│ Authentification, rôles, filtrage, quotas    │
+│          API Gateway and Middleware          │
+│ Authentication, roles, filtering, quotas    │
 └──────────────────────┬───────────────────────┘
                        │
                        ▼
 ┌──────────────────────────────────────────────┐
 │                  LangGraph                   │
-│ Orchestration, état, branches, validations   │
+│ Orchestration, state, branches, validations │
 └──────────────┬─────────────────┬─────────────┘
                │                 │
                ▼                 ▼
 ┌──────────────────────┐ ┌─────────────────────┐
-│ Agents LangChain     │ │ Workflows n8n       │
-│ Raisonnement métier  │ │ Intégrations simples│
+│ LangChain Agents     │ │ n8n Workflows       │
+│ Business reasoning   │ │ Simple integrations │
 └───────────┬──────────┘ └──────────┬──────────┘
             │                       │
             └───────────┬───────────┘
                         ▼
 ┌──────────────────────────────────────────────┐
-│ Outils et systèmes d’information             │
-│ Patrimoine, GED, finance, calendriers, Teams │
+│ Tools and Information Systems                │
+│ Assets, DMS, finance, calendars, Teams       │
 └──────────────────────┬───────────────────────┘
                        │
                        ▼
 ┌──────────────────────────────────────────────┐
-│ Observabilité et audit                       │
-│ Traces, coûts, qualité, erreurs, statistiques│
+│ Observability and Audit                      │
+│ Traces, costs, quality, errors, statistics  │
 └──────────────────────────────────────────────┘
 ```
 
-# 15. Résumé de la stratégie
+# 15. Strategy Summary
 
-La nouvelle architecture repose sur une séparation claire des responsabilités :
+The new architecture is based on a clear separation of responsibilities:
 
 ```text
 n8n
-Automatisation et intégration des tâches simples
+Automation and integration of simple tasks
 
 LangChain
-Construction des agents métier et accès contrôlé aux outils
+Business-agent development and controlled access to tools
 
 LangGraph
-Orchestration, mémoire, décisions et cycle de vie des dossiers
+Orchestration, memory, decision-making and case lifecycle
 
 Middleware
-Sécurité, permissions, validation et contrôle des actions
+Security, permissions, validation and action control
 
-Observabilité
-Traçabilité, coûts, performances, qualité et optimisation
+Observability
+Traceability, costs, performance, quality and optimization
 ```
 
-Cette architecture permet de dépasser les limites rencontrées lors du premier prototype.
+This architecture addresses the limitations encountered with the initial prototype.
 
-Elle rend la plateforme :
+It makes **AI Patrimoine**:
 
-* plus maintenable ;
-* plus sécurisée ;
-* plus observable ;
-* plus économique ;
-* plus facile à optimiser ;
-* plus adaptée aux processus métier complexes ;
-* plus fiable pour interagir avec le patrimoine de l’entreprise.
+* more maintainable;
+* more secure;
+* more observable;
+* more cost-efficient;
+* easier to optimize;
+* better suited to complex business processes;
+* more reliable when interacting with the company's asset-management environment.
